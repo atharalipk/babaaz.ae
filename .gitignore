@@ -4,4 +4,12 @@ wp-content/uploads
 wp-content/themes/twentytwentyone
 1
 wp-config.php
+/vendor
 **/.DS_Store
+
+# Stripe Configuration - Contains sensitive API keys
+stripe-config.php
+stripe-webhook-log.txt
+
+# Stripe PHP Library (if not using Composer)
+stripe-php/
