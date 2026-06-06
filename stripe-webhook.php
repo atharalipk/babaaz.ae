@@ -73,12 +73,24 @@ switch ($event->type) {
             $currency = strtoupper($session->currency);
             $paymentId = $session->payment_intent;
             $sessionId = $session->id;
+            $recordId = isset($session->metadata->payment_record_id) ? $session->metadata->payment_record_id : null;
             
-            // Check if payment already exists by payment_id
-            $existing = $wpdb->get_var($wpdb->prepare(
-                "SELECT id FROM {$wpdb->prefix}payments WHERE payment_id = %s",
-                $paymentId
-            ));
+            // Check if we have the payment record ID from metadata
+            $existing = null;
+            if ($recordId) {
+                $existing = $wpdb->get_var($wpdb->prepare(
+                    "SELECT id FROM {$wpdb->prefix}payments WHERE id = %d",
+                    $recordId
+                ));
+            }
+            
+            // If not found by record ID, check by payment_id
+            if (!$existing) {
+                $existing = $wpdb->get_var($wpdb->prepare(
+                    "SELECT id FROM {$wpdb->prefix}payments WHERE payment_id = %s",
+                    $paymentId
+                ));
+            }
             
             // Also check for pending payment by email (from form submission)
             if (!$existing) {
@@ -109,20 +121,18 @@ switch ($event->type) {
                 $wpdb->insert(
                     $wpdb->prefix . 'payments',
                     array(
-                        'added_date' => current_time('mysql'),
-                        'ip_address' => $_SERVER['REMOTE_ADDR'],
-                        'name' => $customerName,
-                        'email' => $customerEmail,
-                        'phone' => $customerPhone,
+                        'customer_name' => $customerName,
+                        'customer_email' => $customerEmail,
+                        'customer_phone' => $customerPhone,
                         'amount' => $amountPaid,
                         'currency' => $currency,
                         'payment_id' => $paymentId,
                         'session_id' => $sessionId,
-                        'payment_method' => 'stripe',
                         'payment_status' => 'completed',
-                        'webhook_received' => 1
+                        'webhook_received' => 1,
+                        'created_at' => current_time('mysql')
                     ),
-                    array('%s', '%s', '%s', '%s', '%s', '%f', '%s', '%s', '%s', '%s', '%s', '%d')
+                    array('%s', '%s', '%s', '%f', '%s', '%s', '%s', '%s', '%d', '%s')
                 );
                 
                 file_put_contents($log_file, "Payment recorded: " . $paymentId . "\n", FILE_APPEND);

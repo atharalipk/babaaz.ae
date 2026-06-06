@@ -45,16 +45,25 @@ if (!empty($session_id)) {
             $paymentId = $checkout_session->payment_intent;
             
             // Check if we have a payment record ID from the form submission
-            if (isset($_SESSION['payment_record_id']) && !empty($_SESSION['payment_record_id'])) {
+            $recordId = null;
+            if (isset($checkout_session->metadata->payment_record_id) && !empty($checkout_session->metadata->payment_record_id)) {
+                // Get from Stripe metadata (most reliable)
+                $recordId = $checkout_session->metadata->payment_record_id;
+            } elseif (isset($_SESSION['payment_record_id']) && !empty($_SESSION['payment_record_id'])) {
+                // Fallback to session
+                $recordId = $_SESSION['payment_record_id'];
+            }
+            
+            if ($recordId) {
                 // Update existing payment record
                 $wpdb->update(
                     $wpdb->prefix . 'payments',
                     array(
                         'payment_id' => $paymentId,
-                        'payment_status' => 'completed',
-                        'updated_at' => current_time('mysql')
+                        'session_id' => $session_id,
+                        'payment_status' => 'completed'
                     ),
-                    array('id' => $_SESSION['payment_record_id']),
+                    array('id' => $recordId),
                     array('%s', '%s', '%s'),
                     array('%d')
                 );
@@ -66,18 +75,17 @@ if (!empty($session_id)) {
                 $wpdb->insert(
                     $wpdb->prefix . 'payments',
                     array(
-                        'added_date' => current_time('mysql'),
-                        'ip_address' => $_SERVER['REMOTE_ADDR'],
-                        'name' => $customerName,
-                        'email' => $customerEmail,
-                        'phone' => $checkout_session->metadata->customer_phone,
+                        'customer_name' => $customerName,
+                        'customer_email' => $customerEmail,
+                        'customer_phone' => $checkout_session->metadata->customer_phone,
                         'amount' => $amountPaid,
                         'currency' => strtoupper($checkout_session->currency),
                         'payment_id' => $paymentId,
-                        'payment_method' => 'stripe',
-                        'payment_status' => 'completed'
+                        'session_id' => $session_id,
+                        'payment_status' => 'completed',
+                        'created_at' => current_time('mysql')
                     ),
-                    array('%s', '%s', '%s', '%s', '%s', '%f', '%s', '%s', '%s', '%s')
+                    array('%s', '%s', '%s', '%f', '%s', '%s', '%s', '%s', '%s')
                 );
             }
             
