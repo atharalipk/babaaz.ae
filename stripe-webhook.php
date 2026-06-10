@@ -95,7 +95,7 @@ switch ($event->type) {
             // Also check for pending payment by email (from form submission)
             if (!$existing) {
                 $existing = $wpdb->get_var($wpdb->prepare(
-                    "SELECT id FROM {$wpdb->prefix}payments WHERE email = %s AND payment_status = 'pending' ORDER BY added_date DESC LIMIT 1",
+                    "SELECT id FROM {$wpdb->prefix}payments WHERE customer_email = %s AND payment_status = 'pending' ORDER BY created_at DESC LIMIT 1",
                     $customerEmail
                 ));
             }
@@ -156,7 +156,6 @@ switch ($event->type) {
             wp_mail($to, $subject, $message, $headers);
             
             file_put_contents($log_file, "Confirmation email sent to: " . $customerEmail . "\n", FILE_APPEND);
-        }
         }
         break;
         
