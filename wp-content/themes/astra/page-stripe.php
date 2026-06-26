@@ -6,13 +6,31 @@ get_header();
 
 $hashKey='WH20I7WZK18N63U2';
 $cipher="AES-128-ECB";
-$adcrypttext=base64_decode($_GET['key']);
-$dcrypthash = openssl_decrypt($adcrypttext, $cipher, $hashKey,OPENSSL_RAW_DATA);
+$adcrypttext=base64_decode($_GET['key'] ?? '');
+$dcrypthash = openssl_decrypt($adcrypttext, $cipher, $hashKey, OPENSSL_RAW_DATA);
 parse_str($dcrypthash, $getRequest);
+
+// Agar key nahi ya decrypt fail ya required fields empty hain to redirect back
+if (
+    empty($_GET['key']) ||
+    $dcrypthash === false ||
+    empty($getRequest['name']) ||
+    empty($getRequest['email']) ||
+    empty($getRequest['amount'])
+) {
+    wp_redirect(wp_get_referer() ?: home_url());
+    exit;
+}
 ?>
 <style>
 .form-label{top: 26px !important;}
 </style>
+<script>
+  window.addEventListener('DOMContentLoaded', function() {
+    // Sirf tab submit ho jab PHP ne validate kar liya ho
+    document.getElementById('payment-form').submit();
+  });
+</script>
 <div class="loader">
   <div class="loading_icon">
     <img src="<?php bloginfo('stylesheet_directory'); ?>/assets/images/loader.gif" alt="Loader">
@@ -33,7 +51,7 @@ parse_str($dcrypthash, $getRequest);
           <?php endwhile; endif; ?>
 
           <div style="background-color:#FC0; border:#900 2px dotted; margin:25px 56px;" align="center"><span class="style5"><strong>Important:</strong> Use this payment option only when you receive instructions from our Team.<br />All transactions are secure and 256bits encrypted. Your information is not stored in any way.</span></div>
-          <div>
+          <div style="display: none;">
           <?php if(isset($_SESSION['error'])){ ?><div class="alert alert-danger alert-dismissible fade show"><button class="close" data-dismiss="alert">&times;</button><?=$_SESSION['error']?></div><?php } ?>
           <?php if(isset($_SESSION['success'])){ ?><div class="alert alert-success alert-dismissible fade show"><button class="close" data-dismiss="alert">&times;</button><?=$_SESSION['success']?></div><?php } ?>
           <form name="payment-form" id="payment-form" class="rd-mailform text-left" method="post" action="<?php bloginfo('url'); ?>/process/do_stripe.php">
